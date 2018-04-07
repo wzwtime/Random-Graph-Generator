@@ -85,15 +85,16 @@ def random_graph_generator(v, ccr, alpha, out_degree, beta, p):
             width = get_height_width(v, alpha)[1]
 
     # 1) 首先是将图每层的节点数确定
+    num_second_layer = random.randint(2, out_degree)
     while True:
         task_num_layer = []
         for j in range(height - 4):
             num_task = random.randint(2, width)
             task_num_layer.append(num_task)
-        if sum(task_num_layer) == v - 2 - width - out_degree:
+        if sum(task_num_layer) == v - 2 - width - num_second_layer:
             break
     task_num_layer.insert(0, 1)
-    task_num_layer.insert(1, out_degree)
+    task_num_layer.insert(1, num_second_layer)
     task_num_layer.insert(int(height/2), width)
     task_num_layer.append(1)
     print("original task_num_layer:", task_num_layer)
@@ -150,7 +151,7 @@ def random_graph_generator(v, ccr, alpha, out_degree, beta, p):
                     # print("temp_dag", temp_dag)
                     dag[index] = temp_dag
                     # print(dag)
-            elif h != height - 1:
+            elif h != height - 1:   # 再除去最后一层的其他层
                 # 少对多-将子结点随机分为父结点总数个部分
                 child_num = []
                 for i in range(1, len(task_num_layer) - 2):
@@ -204,7 +205,7 @@ def random_graph_generator(v, ccr, alpha, out_degree, beta, p):
 
                 # 多对少-将父结点随机分为子结点总数个部分
                 parent_num = []
-                for i in range(2, len(task_num_layer) - 2):
+                for i in range(2, len(task_num_layer) - 1):     # len(task_num_layer) - 1！！！！！！
                     # print(task_num_layer[i])
                     p_num = task_num_layer[i - 1]
                     c_num = task_num_layer[i]
@@ -242,43 +243,45 @@ def random_graph_generator(v, ccr, alpha, out_degree, beta, p):
                                 # print("p_id =", p_id)
 
                                 # 分配通信开销
+                                temp_dag = {}   # 注意!!!!!!!!!!! 防止产生相同的通信开销
                                 communication_costs = random.randint(1, 2 * avg_communication_costs - 1)
                                 temp_dag[c_id] = communication_costs
                                 dag[p_id] = temp_dag
                 # print("parent_num = ", parent_num)
 
                 # 分配父结点或子结点只有一个任务时的通信开销
-                for layer_id in range(2, height - 1):  # 层编号 2 到 height - 2
-                    # print("layer_id", layer_id)
-                    parent_length = len(dag_id[layer_id - 1])
-                    child_length = len(dag_id[layer_id])
 
-                    max_out_degree = min(5, child_length)  # 每个结点的最大出度
-                    rand_degree = random.randint(1, max_out_degree)
-                    # print("max_out_degree", max_out_degree)
-                    # print("rand_degree", rand_degree)
-
-                    # 分配父结点或子结点只有一个任务时的通信开销
-                    for i in range(parent_length):
-                        parent_task_id = dag_id[layer_id - 1][i]    # 父亲结点编号
-                        # print("parent_task_id =", parent_task_id)  # 显示本层的任务编号
-                        temp_dag = {}
-                        for j in range(child_length):
-                            child_task_id = dag_id[layer_id][j]     # 孩子结点编号
-                            # print("child_task_id", child_task_id)  # 显示下一层的任务编号
-                            # 若父结点只有一个
-                            if parent_length == 1:
-                                communication_costs = random.randint(1, 2 * avg_communication_costs - 1)
-                                temp_dag[child_task_id] = communication_costs
-
-                            # 若子结点只有一个
-                            elif child_length == 1:
-                                communication_costs = random.randint(1, 2 * avg_communication_costs - 1)
-                                temp_dag[child_task_id] = communication_costs
-                                dag[parent_task_id] = temp_dag
-
-                        if parent_length == 1:
-                            dag[parent_task_id] = temp_dag
+                # for layer_id in range(2, height - 1):  # 层编号 2 到 height - 2
+                #     # print("layer_id", layer_id)
+                #     parent_length = len(dag_id[layer_id - 1])
+                #     child_length = len(dag_id[layer_id])
+                #
+                #     max_out_degree = min(5, child_length)  # 每个结点的最大出度
+                #     rand_degree = random.randint(1, max_out_degree)
+                #     # print("max_out_degree", max_out_degree)
+                #     # print("rand_degree", rand_degree)
+                #
+                #     # 分配父结点或子结点只有一个任务时的通信开销
+                #     for i in range(parent_length):
+                #         parent_task_id = dag_id[layer_id - 1][i]    # 父亲结点编号
+                #         # print("parent_task_id =", parent_task_id)  # 显示本层的任务编号
+                #         temp_dag = {}
+                #         for j in range(child_length):
+                #             child_task_id = dag_id[layer_id][j]     # 孩子结点编号
+                #             # print("child_task_id", child_task_id)  # 显示下一层的任务编号
+                #             # 若父结点只有一个
+                #             if parent_length == 1:
+                #                 communication_costs = random.randint(1, 2 * avg_communication_costs - 1)
+                #                 temp_dag[child_task_id] = communication_costs
+                #
+                #             # 若子结点只有一个
+                #             elif child_length == 1:
+                #                 communication_costs = random.randint(1, 2 * avg_communication_costs - 1)
+                #                 temp_dag[child_task_id] = communication_costs
+                #                 dag[parent_task_id] = temp_dag
+                #
+                #         if parent_length == 1:
+                #             dag[parent_task_id] = temp_dag
             else:
                 # 最后一个结点
                 dag[v] = {}
@@ -302,26 +305,59 @@ def select_parameter():
     beta = SET_beta[random_index(SET_beta)]
     p = random.randint(2, 5)    # 处理器数2-5个
     # 写入文件中
-    filename = 'graph_parameter.txt'
-    with open(filename, 'w') as file_object:
-        info = str(v) + "  " + str(ccr) + "  " + str(alpha) + "  " + str(out_degree) + "  " + str(beta) + "\n"
-        file_object.write(info)
-    random_graph_generator(v, ccr, alpha, 5, beta, p)
+    # filename = 'graph_parameter.txt'
+    # with open(filename, 'w') as file_object:
+    #     info = str(v) + "  " + str(ccr) + "  " + str(alpha) + "  " + str(out_degree) + "  " + str(beta) + "\n"
+    #     file_object.write(info)
+    random_graph_generator(20, ccr, alpha, 5, beta, 3)
 
 
 select_parameter()
-
 dag1 = sorted(dag.items(), key=operator.itemgetter(0))  # 按任务编号升序排序
 print("dag =", dag1)
-
 print("computation_costs =", computation_costs)
 
+# dag1 = [(1, {2: 94, 3: 1}), (2, {4: 51}), (3, {5: 51}), (4, {6: 51}), (5, {7: 92}), (6, {8: 8, 9: 42, 10: 42}), (7, {11: 29}), (8, {12: 66}), (9, {13: 96}), (10, {14: 5}), (11, {15: 127}), (12, {16: 72}), (13, {16: 12}), (14, {17: 71}), (15, {17: 82}), (16, {18: 77}), (17, {19: 6}), (18, {20: 59}), (19, {20: 109}), (20, {})]
 
-"""
-filename = 'parameter.txt'
-            with open(filename, 'a') as file_object:
-                info = str(v) + "  " + str(height) + "  " + str(width) + "  " + str(out_degree) + "  " + str(
-                    beta) + "  " \
-                       + str(p) + "\n"
-                file_object.write(info)
-"""
+
+# 将DAG图存放在文件中
+filename_ = 'dag.txt'
+if os.path.exists(filename_):
+    os.remove(filename_)  # 删除文件
+for i in range(len(dag1)):
+    task_id = dag1[i][0]
+    for key, value in dag1[i][1].items():
+        succ_id = key
+        succ_weight = value
+        filename_ = 'dag.txt'   # 再新建文件
+        with open(filename_, 'a') as file_object:
+            info = str(task_id) + " " + str(succ_id) + " " + str(succ_weight) + "\n"
+            file_object.write(info)
+
+
+# 读DAG文件,构造dag
+new_dag = {}
+filename = 'dag.txt'
+if os.path.exists(filename):    # dag.txt exists
+    with open(filename, 'r') as file_object:
+        lines = file_object.readlines()
+        task_id_ = 0
+        for i in range(len(dag1)):
+            succ_dict = {}  # 后继字典
+            for line in lines:
+                line_list = line.split()  # 默认以空格为分隔符对字符串进行切片
+                task_id = int(line_list[0])
+                succ_id = int(line_list[1])
+                succ_weight = int(line_list[2])
+
+                if task_id == int(dag1[i][0]):
+                    task_id_ = task_id
+                    succ_dict[succ_id] = succ_weight
+            if task_id_ == int(dag1[i][0]):
+                new_dag[task_id_] = succ_dict
+    last_task_id = dag1[-1][0]
+    new_dag[last_task_id] = {}
+
+# print(computation_costs)
+# print(new_dag)
+# print(len(new_dag))
